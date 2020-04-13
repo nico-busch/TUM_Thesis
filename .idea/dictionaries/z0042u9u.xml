@@ -3,8 +3,10 @@
     <words>
       <w>covariate</w>
       <w>covariates</w>
+      <w>dataset</w>
       <w>lstm</w>
       <w>optim</w>
+      <w>prnn</w>
       <w>scaler</w>
       <w>softmax</w>
     </words>

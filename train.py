@@ -1,60 +1,64 @@
-import numpy as np
 import torch
-from sklearn.preprocessing import StandardScaler
+from torch.utils.data import DataLoader
+import matplotlib.pyplot as plt
 
-from loss import estimated_costs, prescription_error
+from loss import expected_costs, prescription_error
 
 
-class Trainer:
-    def __init__(self, model, spot, forward, covariate, demand, split):
+class PRNNTrainer:
+
+    def __init__(self, model, train_set, val_set, n_epochs=100, batch_size=12):
 
         self.model = model
+        self.train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=False)
+        self.val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
+        self.n_epochs = n_epochs
+        self.batch_size = batch_size
 
-        prices = np.hstack([spot[:, np.newaxis], forward])
-        features = np.hstack([spot[:, np.newaxis], forward, covariate])
+    def train(self):
 
-        self.scaler = StandardScaler()
-        n_split = int(round(spot.shape[0] * split))
-        self.scaler.fit(features[:n_split])
-        features = self.scaler.transform(features)
-        self.x_train, self.y_train, self.d_train = self.generate_seq(
-            prices[:n_split], features[:n_split], demand[:n_split], self.model.n_steps)
-        self.x_test, self.y_test, self.d_test = self.generate_seq(
-            prices[n_split:], features[n_split:], demand[n_split:], self.model.n_steps)
+        optim = torch.optim.Adam(self.model.parameters(), weight_decay=0)
+        train_loss = []
+        val_loss = []
 
-    @staticmethod
-    def generate_seq(prices, features, demand, n_steps):
+        for e in range(self.n_epochs):
+            n_batches = 0
+            train_pe = 0
 
-        n_time = prices.shape[0]
-        n_forwards = prices.shape[1] - 1
-        x, y, d = [], [], []
+            for x, y, d in self.train_loader:
+                optim.zero_grad()
+                weights = self.model.forward(x)
+                loss = expected_costs(weights, y, d)
+                loss.backward()
+                optim.step()
 
-        for p in range(n_forwards):
-            y_ = []
-            for t in range(n_time - n_steps - n_forwards + 1):
-                y_.append(np.diag(np.flipud(prices[t + n_steps - 1:t + n_steps + p + 1])))
-            y.append(torch.tensor(y_).float())
+                decisions = []
+                for p in range(len(weights)):
+                    decisions.append(torch.argmax(weights[p], dim=1).view(-1, 1))
+                train_pe += prescription_error(decisions, y, d)
+                n_batches += 1
 
-        for t in range(n_time - n_steps - n_forwards + 1):
-            x.append(features[t:t + n_steps])
-            d.append(demand[t + n_steps:t + n_steps + n_forwards])
+            train_pe = train_pe / n_batches
+            train_loss.append(train_pe)
 
-        x = torch.tensor(x).float()
-        d = torch.tensor(d).float()
+            n_batches = 0
+            val_pe = 0
 
-        return x, y, d
+            for x, y, d in self.val_loader:
+                weights = self.model.forward(x)
+                decisions = []
+                for p in range(len(weights)):
+                    decisions.append(torch.argmax(weights[p], dim=1).view(-1, 1))
+                val_pe += prescription_error(decisions, y, d)
+                n_batches += 1
 
-    def train(self, n_epochs=10):
+            val_pe = val_pe / n_batches
+            val_loss.append(val_pe)
 
-        optim = torch.optim.Adam(self.model.parameters())
+        plt.plot(train_loss, label='train')
+        plt.plot(val_loss, label='val')
+        plt.legend()
+        plt.show()
 
-        for t in range(n_epochs):
-            optim.zero_grad()
-            weights = self.model.forward(self.x_train)
-            loss = estimated_costs(weights, self.y_train, self.d_train)
-            loss.backward()
-            optim.step()
 
-    def test(self):
-        weights = self.model.forward(self.x_test)
-        return prescription_error(weights, self.y_test, self.d_test)
+

@@ -1,7 +1,3 @@
-import pandas as pd
-from train import PRNNTrainer
-from model import PRNN
-
 from numerical_study import simulation
 
 simulation()

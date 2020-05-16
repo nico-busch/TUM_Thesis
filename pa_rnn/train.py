@@ -57,12 +57,12 @@ class Trainer:
                 best_loss = val_loss
                 best_epoch = e
 
-            # train_losses.append(train_loss)
-            # val_losses.append(val_loss)
-            val_losses.append(prescribe_multiperiod(model, self.test_set,
-                                     self.prices[-self.test_size:], self.demand[-self.test_size:])[1].mean())
+            train_losses.append(train_loss)
+            val_losses.append(val_loss)
+            # val_losses.append(prescribe_multiperiod(model, self.test_set,
+            #                          self.prices[-self.test_size:], self.demand[-self.test_size:])[1].mean())
 
-        # plt.plot(train_losses)
+        plt.plot(train_losses)
         plt.plot(val_losses)
         plt.show()
 

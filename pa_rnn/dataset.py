@@ -14,8 +14,8 @@ class Dataset(Dataset):
         self.n_steps = n_steps
 
         self.features_std = (features - features[:-test_size].mean(axis=0)) / features[:-test_size].std(axis=0)
-        self.weights = [1 / np.asarray([np.fliplr(prices[i:, :j + 1]).diagonal()
-                                        for i in range(prices.shape[0] - prices.shape[1] + 1)])
+        self.weights = [np.asarray([np.fliplr(prices[i:, :j + 1]).diagonal()
+                                    for i in range(prices.shape[0] - prices.shape[1] + 1)])
                         * demand[j:demand.shape[0] - prices.shape[1] + j + 1, None]
                         for j in range(1, prices.shape[1])]
 

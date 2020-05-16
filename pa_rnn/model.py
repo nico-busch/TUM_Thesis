@@ -38,6 +38,6 @@ class RNN(torch.nn.Module):
 
         out = []
         for p in range(self.n_prices - 1):
-            out.append(self.linear[p](dropout_out.contiguous().view(dropout_out.shape[0], -1)))
+            out.append(self.linear[p](dropout_out))
 
         return out

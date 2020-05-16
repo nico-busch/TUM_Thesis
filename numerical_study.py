@@ -55,7 +55,7 @@ def simulation(n_runs=100):
     test_size = 48
 
     params = {
-        'n_steps': 3,
+        'n_steps': 12,
         'n_hidden': 100,
         'n_layers': 4,
         'batch_size': 4,

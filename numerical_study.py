@@ -3,8 +3,7 @@ import numpy as np
 import pandas as pd
 from itertools import product
 
-from pa_rnn.train import Trainer
-from dda.dda import DDA
+import tests
 
 def generate_data(n_time=120, initial_spot=200, sigma=5, beta0=0, beta1=1, beta2=1, seasonal=True, mean_demand=1,
                   n_add_feature=8, price_feature_sigma=15):
@@ -22,11 +21,10 @@ def generate_data(n_time=120, initial_spot=200, sigma=5, beta0=0, beta1=1, beta2
             positive = True
 
     forward = spot + np.random.normal(0, spot / 100)
-    forward2 = forward + np.random.normal(0, forward / 100)
     prices = np.vstack([spot, forward]).T
 
     add_features = np.hstack([np.random.normal(10 * i, 2 * i, [n_time, 1]) for i in range(3, 3 + n_add_feature)])
-    features = np.hstack([spot[:, np.newaxis], forward[:, np.newaxis], price_feature[:, np.newaxis], add_features])
+    features = np.hstack([spot[:, np.newaxis], price_feature[:, np.newaxis], add_features])
 
     if seasonal:
         demand = 1 + 0.5 * np.sin(np.pi * (np.arange(1, n_time + 1) - 2) / 6) * mean_demand
@@ -36,12 +34,14 @@ def generate_data(n_time=120, initial_spot=200, sigma=5, beta0=0, beta1=1, beta2
     return prices, features, demand
 
 
-def simulation(n_runs=100):
+def simulation():
 
-    np.random.seed(3)
-    torch.manual_seed(3)
+    np.random.seed(42)
+    torch.manual_seed(42)
 
-    beta = [
+    n_runs = 100
+
+    betas = [
         {
             'beta0': 0,
             'beta1': 1
@@ -50,60 +50,40 @@ def simulation(n_runs=100):
             'beta0': 100,
             'beta1': 0.5}
     ]
-    sigma = [5, 10, 20, 30]
-    train_size = [24]
+    sigmas = [5]
+    train_sizes = [72]
     test_size = 48
 
-    params = {
-        'n_steps': 12,
-        'n_hidden': 100,
-        'n_layers': 4,
-        'batch_size': 4,
-        'n_epochs': 100,
-        'lr': 1e-3,
-        'weight_decay': 1e-6,
-        'grad_clip': 10,
-        'dropout': 0.0
-    }
+    results = pd.DataFrame(columns=['beta0', 'beta1', 'sigma', '#train', 'run',
+                                    'p_spot', 'p_m1', 'rnn'])
+    results = results.set_index(['beta0', 'beta1', 'sigma', '#train', 'run'])
 
-    results = pd.DataFrame(columns=['Beta0', 'Beta1', 'Sigma', 'Train', 'Run',
-                                    'P-Spot', 'P-M1',  'PA_RNN'])
-    results = results.set_index(['Beta0', 'Beta1', 'Sigma', 'Train', 'Run'])
-
-    for b, s, t in product(beta, sigma, train_size):
+    for beta, sigma, train_size in product(betas, sigmas, train_sizes):
 
         for r in range(n_runs):
 
-            prices, features, demand = generate_data(n_time=t + test_size,
-                                                     beta0=b['beta0'], beta1=b['beta1'], sigma=s)
+            prices, features, demand = generate_data(n_time=train_size + test_size,
+                                                     beta0=beta['beta0'], beta1=beta['beta1'], sigma=sigma)
 
-            prices_train, features_train, demand_train = prices[:t], features[:t], demand[:t]
-            prices_test, features_test, demand_test = prices[t:], features[t:], demand[t:]
+            c_pf = tests.c_pf(prices[train_size:], demand[train_size:])
+            c_0 = tests.c_tau(prices[train_size:], demand[train_size:], 0)
+            c_1 = tests.c_tau(prices[train_size:], demand[train_size:], 1)
+            # c_dda1 = test.test_dda(prices, features, demand, test_size, 'l1')
+            # c_dda2 = test.test_dda(prices, features, demand, test_size, 'l2')
+            # c_pred = test.test_predictive(prices, features, demand, test_size)
+            c_pres = tests.test_prescriptive(prices, features, demand, test_size)
 
-            c_pf = DDA.c_pf(prices_test, demand_test)
-
-            c_spot = np.mean(prices_test[:, 0] * demand_test)
-            c_forward = np.mean(np.hstack([prices_test[0, 0], prices_test[:-1, 1]]) * demand_test)
-
-            # dda_l1 = DDA(prices_train, features_train, demand_train, prices_test, features_test, demand_test, reg='l1')
-            # dda_l1.train()
-            # c_dda_l1 = dda_l1.test().mean()
-            #
-            # dda_l2 = DDA(prices_train, features_train, demand_train, prices_test, features_test, demand_test, reg='l2')
-            # dda_l2.train()
-            # c_dda_l2 = dda_l2.test().mean()
-
-            trainer = Trainer(prices, features, demand, test_size, params)
-            trainer.train()
-            c_nn = trainer.test().mean()
-
-            costs = np.array([c_spot, c_forward, c_nn])
+            costs = np.array([c_0, c_1, c_pres])
             pe = (costs - c_pf) / c_pf * 100
 
-            results.loc[b['beta0'], b['beta1'], s, t, r + 1] = pe
+            results.loc[beta['beta0'], beta['beta1'], sigma, train_size, r + 1] = pe
+            results.loc[beta['beta0'], beta['beta1'], sigma, train_size, 'Mean'] = results.mean(axis=0)
             print(results)
 
             results.to_pickle('data/results.pkl')
+
+if __name__ == '__main__':
+    simulation()
 
 
 

@@ -21,11 +21,11 @@ class RNN(torch.nn.Module):
 
         self.dropout = torch.nn.Dropout(p=dropout)
 
-        self.linear = [torch.nn.Linear(n_hidden, p + 2) for p in range(n_prices - 1)]
+        self.linear = torch.nn.Linear(n_hidden, n_prices - 1)
 
-    def forward(self, features):
+    def forward(self, sequences):
 
-        lstm_in = features
+        lstm_in = sequences
         lstm_out = None
         for l in range(len(self.lstm)):
             residual = lstm_in
@@ -35,9 +35,7 @@ class RNN(torch.nn.Module):
             lstm_in = lstm_out
 
         dropout_out = self.dropout(lstm_out[:, -1])
+        linear_out = self.linear(dropout_out)
 
-        out = []
-        for p in range(self.n_prices - 1):
-            out.append(self.linear[p](dropout_out))
+        return linear_out
 
-        return out

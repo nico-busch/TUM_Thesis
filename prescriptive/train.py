@@ -21,26 +21,25 @@ class Trainer:
         train_losses = []
         val_losses = []
 
-        idx = range(len(self.train_set))
-        val_size = 12
-        train_set = Subset(self.train_set, idx[:-val_size])
-        val_set = Subset(self.train_set, idx[-val_size:])
+        # idx = range(len(self.train_set))
+        # val_size = 12
+        # train_set = Subset(self.train_set, idx[:-val_size])
+        # val_set = Subset(self.train_set, idx[-val_size:])
 
         train_loader = DataLoader(self.train_set, batch_size=self.params['batch_size'], shuffle=False)
-        val_loader = DataLoader(val_set, batch_size=self.params['batch_size'], shuffle=False)
+        val_loader = DataLoader(self.val_set, batch_size=self.params['batch_size'], shuffle=False)
 
         for e in range(self.params['n_epochs']):
 
             train_loss = self.train_epoch(train_loader)
-            val_loss = self.val(val_loader)
+            # val_loss = self.val(val_loader)
 
             train_losses.append(train_loss)
+            # val_losses.append(val_loss)
 
-            val_losses.append(val_loss)
-
-        plt.plot(train_losses)
-        plt.plot(val_losses)
-        plt.show()
+        # plt.plot(train_losses)
+        # plt.plot(val_losses)
+        # plt.show()
 
     def train_epoch(self, train_loader):
 

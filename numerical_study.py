@@ -56,7 +56,7 @@ def simulation():
             'beta1': 0.5}
     ]
     sigmas = [5, 10, 20, 30]
-    train_sizes = [24, 48, 72]
+    train_sizes = [72]
     test_size = 48
 
     results = pd.DataFrame(columns=['beta0', 'beta1', 'sigma', 'train_size', 'run',
@@ -69,9 +69,6 @@ def simulation():
 
             prices, features, demand = generate_data(n_time=train_size + test_size - 1,
                                                      beta0=beta['beta0'], beta1=beta['beta1'], sigma=sigma)
-
-            if sigma != 20 or train_size != 72:
-                continue
 
             c_pf = test_utils.c_pf(prices[-test_size:], demand[-test_size:])
             c_0 = test_utils.c_tau(prices[-test_size:], demand[-test_size:], 0)
@@ -86,8 +83,9 @@ def simulation():
 
             results.loc[beta['beta0'], beta['beta1'], sigma, train_size, r + 1] = pe
             print(results)
+            print(results.mean())
 
-            # results.to_pickle('data/numerical_dda3.pkl')
+            results.to_pickle('data/numerical_dda3.pkl')
 
 def test_prescriptive(prices, features, demand, test_size):
 
@@ -119,9 +117,8 @@ def test_prescriptive(prices, features, demand, test_size):
         idx = prices.shape[0] - test_size + t
         model.eval()
         with torch.no_grad():
-            logits = model(torch.tensor(features_std[None, idx - params['n_steps'] + 1:idx + 1]).float())
-            for p in range(prices.shape[1] - 1):
-                signals[t, p + 1] = logits[p].softmax(dim=1).numpy().argmax() == 0
+            probs = model(torch.tensor(features_std[None, idx - params['n_steps'] + 1:idx + 1]).float())
+            signals[t, 1:] = probs.sigmoid().numpy().squeeze(axis=0) >= 0.5
 
     costs, _ = test_utils.c_prescribe(prices[-test_size:], demand[-test_size:], signals)
 

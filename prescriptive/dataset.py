@@ -21,7 +21,7 @@ class Dataset(Dataset):
         options = [np.flipud(np.flipud(self.prices[t + self.n_steps - 1:t + self.n_steps + i]).diagonal())
                    * self.demand[t + self.n_steps + i - 1]
                    for i in range(1, self.prices.shape[1])]
-        weights = torch.tensor([abs((x[0] - x[1:].min())) for x in options]).float()
+        weights = [torch.tensor((x - x.min())) for x in options]
         targets = torch.tensor([x.argmin(axis=0) == 0 for x in options]).float()
 
         return sequences, targets, weights

@@ -47,7 +47,7 @@ def test_prescriptive(prices, features, demand, test_size):
         'n_hidden': 128,
         'n_layers': 4,
         'batch_size': 32,
-        'n_epochs': 25,
+        'n_epochs': 50,
         'lr': 1e-3,
         'weight_decay': 1e-6,
         'grad_clip': 10,
@@ -77,8 +77,9 @@ def test_prescriptive(prices, features, demand, test_size):
 
         model.eval()
         with torch.no_grad():
-            probs = model(torch.tensor(features_std[None, idx - params['n_steps'] + 1:idx + 1]).float())
-            signals[t, 1:] = probs.sigmoid().numpy().squeeze(axis=0) >= 0.5
+            logits = model(torch.tensor(features_std[None, idx - params['n_steps'] + 1:idx + 1]).float())
+            for p in range(prices.shape[1] - 1):
+                signals[t, p + 1] = logits[p].softmax(dim=1).numpy().argmax() == 0
 
     costs, decisions = test_utils.c_prescribe(prices[-test_size:], demand[-test_size:], signals)
     viz.decision_curve(prices[-test_size:], decisions)

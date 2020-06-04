@@ -26,10 +26,10 @@ class PredictiveNet(torch.nn.Module):
 
         lstm_in = sequences
         lstm_out = None
-        for l in range(len(self.lstm)):
+        for i, l in enumerate(self.lstm):
             residual = lstm_in
-            lstm_out, _ = self.lstm[l](lstm_in)
-            if l > 0:
+            lstm_out, _ = l(lstm_in)
+            if i > 0:
                 lstm_out += residual
             lstm_in = lstm_out
         dropout_out = self.dropout(lstm_out.contiguous().view(lstm_out.shape[0], -1))

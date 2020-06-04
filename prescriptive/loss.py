@@ -2,6 +2,7 @@ import torch
 
 
 def weighted_bce_loss(logits, targets, weights):
-    loss = (-weights * (torch.nn.functional.logsigmoid(logits) * targets +
-                        torch.nn.functional.logsigmoid(-logits) * (1 - targets))).mean()
-    return loss
+    loss = 0
+    for f in range(len(logits)):
+        loss += (logits[f].softmax(dim=1) * weights[f]).mean()
+    return loss / len(logits)

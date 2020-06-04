@@ -60,7 +60,7 @@ def simulation():
     test_size = 48
 
     results = pd.DataFrame(columns=['beta0', 'beta1', 'sigma', 'train_size', 'run',
-                                    'p_spot', 'p_m1', 'dda_ml1', 'dda_ml2'])
+                                    'p_spot', 'p_m1', 'presnet'])
     results = results.set_index(['beta0', 'beta1', 'sigma', 'train_size', 'run'])
 
     for beta, sigma, train_size in product(betas, sigmas, train_sizes):
@@ -70,24 +70,24 @@ def simulation():
             prices, features, demand = generate_data(n_time=train_size + test_size - 1,
                                                      beta0=beta['beta0'], beta1=beta['beta1'], sigma=sigma)
 
-            if beta['beta0'] == 0:
+            if sigma != 20 or train_size != 72:
                 continue
 
             c_pf = test_utils.c_pf(prices[-test_size:], demand[-test_size:])
             c_0 = test_utils.c_tau(prices[-test_size:], demand[-test_size:], 0)
             c_1 = test_utils.c_tau(prices[-test_size:], demand[-test_size:], 1)
-            c_dda1 = test_dda(prices, features, demand, test_size, 'l1')
-            c_dda2 = test_dda(prices, features, demand, test_size, 'l2')
+            # c_dda1 = test_dda(prices, features, demand, test_size, 'l1')
+            # c_dda2 = test_dda(prices, features, demand, test_size, 'l2')
             # c_pred = test_predictive(prices, features, demand, test_size)
-            # c_pres = test_prescriptive(prices, features, demand, test_size)
+            c_pres = test_prescriptive(prices, features, demand, test_size)
 
-            costs = np.array([c_0, c_1, c_dda1, c_dda2])
+            costs = np.array([c_0, c_1, c_pres])
             pe = (costs - c_pf) / c_pf * 100
 
             results.loc[beta['beta0'], beta['beta1'], sigma, train_size, r + 1] = pe
             print(results)
 
-            results.to_pickle('data/numerical_dda3.pkl')
+            # results.to_pickle('data/numerical_dda3.pkl')
 
 def test_prescriptive(prices, features, demand, test_size):
 
@@ -96,11 +96,11 @@ def test_prescriptive(prices, features, demand, test_size):
         'n_hidden': 128,
         'n_layers': 4,
         'batch_size': 32,
-        'n_epochs': 25,
+        'n_epochs': 50,
         'lr': 1e-3,
         'weight_decay': 1e-6,
         'grad_clip': 10,
-        'dropout': 0.0
+        'dropout': 0.5
     }
 
     scaler = StandardScaler()
@@ -119,8 +119,9 @@ def test_prescriptive(prices, features, demand, test_size):
         idx = prices.shape[0] - test_size + t
         model.eval()
         with torch.no_grad():
-            probs = model(torch.tensor(features_std[None, idx - params['n_steps'] + 1:idx + 1]).float())
-            signals[t, 1:] = probs.sigmoid().numpy().squeeze(axis=0) >= 0.5
+            logits = model(torch.tensor(features_std[None, idx - params['n_steps'] + 1:idx + 1]).float())
+            for p in range(prices.shape[1] - 1):
+                signals[t, p + 1] = logits[p].softmax(dim=1).numpy().argmax() == 0
 
     costs, _ = test_utils.c_prescribe(prices[-test_size:], demand[-test_size:], signals)
 

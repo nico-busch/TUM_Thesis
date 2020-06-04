@@ -1,5 +1,5 @@
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 import matplotlib.pyplot as plt
 
 from prescriptive.loss import weighted_bce_loss
@@ -21,20 +21,25 @@ class Trainer:
         train_losses = []
         val_losses = []
 
+        # idx = range(len(self.train_set))
+        # val_size = 12
+        # train_set = Subset(self.train_set, idx[:-val_size])
+        # val_set = Subset(self.train_set, idx[-val_size:])
+
         train_loader = DataLoader(self.train_set, batch_size=self.params['batch_size'], shuffle=False)
         val_loader = DataLoader(self.val_set, batch_size=self.params['batch_size'], shuffle=False)
 
         for e in range(self.params['n_epochs']):
 
             train_loss = self.train_epoch(train_loader)
-            val_loss = self.val(val_loader)
+            # val_loss = self.val(val_loader)
 
             train_losses.append(train_loss)
-            val_losses.append(val_loss)
+            # val_losses.append(val_loss)
 
-        plt.plot(train_losses)
-        plt.plot(val_losses)
-        # plt.show(block=False)
+        # plt.plot(train_losses)
+        # plt.plot(val_losses)
+        # plt.show()
 
     def train_epoch(self, train_loader):
 
@@ -46,10 +51,8 @@ class Trainer:
 
             logits = self.model(sequences)
             loss = weighted_bce_loss(logits, targets, weights)
-            predicted = logits.sigmoid().round()
-            losss = (predicted == targets).sum().item()
-            train_loss += losss
-            n_batches += targets.shape[0]
+            train_loss += loss
+            n_batches += 1
             loss.backward()
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.params['grad_clip'])
             self.optimizer.step()
@@ -68,10 +71,8 @@ class Trainer:
 
                 logits = self.model(sequences)
                 loss = weighted_bce_loss(logits, targets, weights)
-                predicted = logits.sigmoid().round()
-                loss = (predicted == targets).sum().item()
                 val_loss += loss
-                n_batches += targets.shape[0]
+                n_batches += 1
 
         return val_loss / n_batches
 

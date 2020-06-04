@@ -1,12 +1,14 @@
 <component name="ProjectDictionaryState">
   <dictionary name="nicol">
     <words>
+      <w>arima</w>
       <w>bigm</w>
       <w>conv</w>
       <w>hedgings</w>
       <w>logits</w>
       <w>multiperiod</w>
       <w>parnn</w>
+      <w>pred</w>
       <w>preds</w>
       <w>probs</w>
     </words>

@@ -66,6 +66,7 @@ class DDA:
 
         m = gp.Model()
         m.Params.outputFlag = 0
+        m.Params.timeLimit = 30
 
         q = m.addVars(range(1, T + 1), range(F + 1), vtype=GRB.BINARY)
         beta = m.addVars(range(N + 1), range(F + 1))

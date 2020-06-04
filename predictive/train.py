@@ -30,9 +30,9 @@ class Trainer:
             train_losses.append(train_loss)
             val_losses.append(val_loss)
 
-        plt.plot(train_losses)
-        plt.plot(val_losses)
-        plt.show(block=False)
+        # plt.plot(train_losses)
+        # plt.plot(val_losses)
+        # plt.show()
 
     def train_epoch(self, train_loader):
 
@@ -44,9 +44,9 @@ class Trainer:
 
             logits = self.model(sequences)
             criterion = torch.nn.MSELoss()
-            loss = criterion(logits, targets.view(-1, 1))
+            loss = criterion(logits, targets)
             train_loss += loss
-            n_batches += targets.shape[0]
+            n_batches += 1
             loss.backward()
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.params['grad_clip'])
             self.optimizer.step()
@@ -65,8 +65,8 @@ class Trainer:
 
                 logits = self.model(sequences)
                 criterion = torch.nn.MSELoss()
-                loss = criterion(logits, targets.view(-1, 1))
+                loss = criterion(logits, targets)
                 val_loss += loss
-                n_batches += targets.shape[0]
+                n_batches += 1
 
         return val_loss / n_batches

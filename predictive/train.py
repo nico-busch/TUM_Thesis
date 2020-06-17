@@ -25,10 +25,10 @@ class Trainer:
         for e in range(self.params['n_epochs']):
 
             train_loss = self.train_epoch(train_loader)
-            val_loss = self.val(val_loader)
+            # val_loss = self.val(val_loader)
 
             train_losses.append(train_loss)
-            val_losses.append(val_loss)
+            # val_losses.append(val_loss)
 
         # plt.plot(train_losses)
         # plt.plot(val_losses)

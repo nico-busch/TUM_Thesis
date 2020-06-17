@@ -6,6 +6,7 @@ def forward_curve(prices):
     plt.plot(prices[:, 0], color='tab:blue', linewidth=3)
     for t in range(prices.shape[0]):
         plt.plot(range(t, t + prices.shape[1]), prices[t], marker='o', color='tab:orange', ls='--', markersize=10)
+    plt.savefig('example.pgf')
     plt.show()
 
 def decision_curve(prices, decisions):

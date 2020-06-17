@@ -14,10 +14,15 @@ def run():
     torch.manual_seed(42)
 
     df = pd.read_csv('data/data.csv', parse_dates=['DATE'], index_col='DATE', dayfirst=True)
+    df = df[12:]
     df = df.bfill()
     prices = df[['SPOT', 'M1', 'M2', 'M3', 'M4']].to_numpy()
-    features = df[['SPOT', 'TEMP', 'EURUSD', 'M1']].to_numpy()
+    features = df[['SPOT', 'SPOT-1', 'SPOT-2', 'SPOT-3', 'GASPOOL',
+       'TTF', 'HENRYHUB', 'API2', 'BRENT', 'BCOM', 'EURUSD', 'EURGBP',
+       'EURCNY', 'DXY', 'PPI', 'PROD', 'CONS', 'FUNDRATE', 'SP500', 'TEMP']].to_numpy()
     demand = np.ones(prices.shape[0])
+
+    viz.forward_curve(prices[:12])
 
     test_size = 36
 
@@ -43,11 +48,11 @@ def run():
 def test_prescriptive(prices, features, demand, test_size):
 
     params = {
-        'n_steps': 12,
+        'n_steps': 3,
         'n_hidden': 128,
         'n_layers': 4,
         'batch_size': 32,
-        'n_epochs': 50,
+        'n_epochs': 25,
         'lr': 1e-3,
         'weight_decay': 1e-6,
         'grad_clip': 10,
@@ -77,9 +82,8 @@ def test_prescriptive(prices, features, demand, test_size):
 
         model.eval()
         with torch.no_grad():
-            logits = model(torch.tensor(features_std[None, idx - params['n_steps'] + 1:idx + 1]).float())
-            for p in range(prices.shape[1] - 1):
-                signals[t, p + 1] = logits[p].softmax(dim=1).numpy().argmax() == 0
+            probs = model(torch.tensor(features_std[None, idx - params['n_steps'] + 1:idx + 1]).float())
+            signals[t, 1:] = probs.sigmoid().numpy().squeeze(axis=0) >= 0.5
 
     costs, decisions = test_utils.c_prescribe(prices[-test_size:], demand[-test_size:], signals)
     viz.decision_curve(prices[-test_size:], decisions)

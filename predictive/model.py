@@ -20,7 +20,7 @@ class PredictiveNet(torch.nn.Module):
             layers.append(torch.nn.LSTM(n_input, n_hidden, batch_first=True))
         self.lstm = torch.nn.ModuleList(layers)
         self.dropout = torch.nn.Dropout(p=dropout)
-        self.linear = torch.nn.Linear(n_hidden * n_steps, n_fc)
+        self.linear = torch.nn.Linear(n_hidden, n_fc)
 
     def forward(self, sequences):
 
@@ -32,7 +32,7 @@ class PredictiveNet(torch.nn.Module):
             if i > 0:
                 lstm_out += residual
             lstm_in = lstm_out
-        dropout_out = self.dropout(lstm_out.contiguous().view(lstm_out.shape[0], -1))
+        dropout_out = self.dropout(lstm_out[:, -1])
         linear_out = self.linear(dropout_out)
 
         return linear_out

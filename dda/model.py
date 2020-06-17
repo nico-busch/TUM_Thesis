@@ -26,8 +26,9 @@ class DDA:
             lambda_best = None
             c_best = np.inf
             beta = np.full([self.features.shape[1], self.prices.shape[1]], np.inf)
+            count = 0
 
-            while np.sum(beta[1:, 1:]) >= 10e-3:
+            while np.sum(beta[1:, 1:]) >= 10e-3 and count <= 1e3:
 
                 c_split = np.empty(cv.get_n_splits())
 
@@ -45,6 +46,8 @@ class DDA:
                     lambda1 += 0.01
                 if self.reg == 'l2':
                     lambda2 += 0.01
+
+                count += 1
 
         else:
             lambda_best = 0, 0

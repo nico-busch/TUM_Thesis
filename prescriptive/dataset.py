@@ -1,9 +1,10 @@
 import numpy as np
 import torch
 from torch.utils.data import Dataset
+from sklearn.preprocessing import StandardScaler
 
 
-class Dataset(Dataset):
+class PresDataset(Dataset):
 
     def __init__(self, prices, features, demand, n_steps):
 
@@ -12,12 +13,15 @@ class Dataset(Dataset):
         self.demand = demand
         self.n_steps = n_steps
 
+        self.scaler = StandardScaler()
+        self.features_std = self.scaler.fit_transform(features)
+
     def __len__(self):
         return self.prices.shape[0] - self.prices.shape[1] - self.n_steps + 2
 
     def __getitem__(self, t):
 
-        sequences = torch.tensor(self.features[t:t + self.n_steps]).float()
+        sequences = torch.tensor(self.features_std[t:t + self.n_steps]).float()
         options = [np.flipud(np.flipud(self.prices[t + self.n_steps - 1:t + self.n_steps + i]).diagonal())
                    * self.demand[t + self.n_steps + i - 1]
                    for i in range(1, self.prices.shape[1])]

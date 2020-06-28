@@ -5,8 +5,8 @@
       <sourceFolder url="file://$MODULE_DIR$/dda" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/.idea" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/data" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/predictive" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/prescriptive" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/prednet" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/presnet" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$" isTestSource="false" />
     </content>
     <orderEntry type="inheritedJdk" />

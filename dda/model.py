@@ -15,6 +15,7 @@ class DDA:
         self.reg = reg
         self.big_m = big_m
 
+        # Normalize features
         self.scaler = StandardScaler()
         self.features_std = self.scaler.fit_transform(features)
 
@@ -29,12 +30,11 @@ class DDA:
             lam_best = None
             c_best = np.inf
             beta = np.full([self.features.shape[1] + 1, self.prices.shape[1]], np.inf)
-            count = 0
 
-            while np.sum(beta[1:, 1:]) >= 10e-3 and count <= 1e3:
+            while np.sum(beta[1:, 1:]) >= 10e-3:
 
+                # Cross-validate
                 c_split = np.empty(cv.get_n_splits())
-
                 for i, (train, val) in enumerate(cv.split(self.prices)):
 
                     _, beta = self.optimize(self.prices[train], self.features_std[train], self.demand[train],
@@ -46,7 +46,6 @@ class DDA:
                     c_best = c
                     lam_best = lam
                     lam += 0.01
-                count += 1
 
             obj, self.beta = self.optimize(self.prices, self.features_std, self.demand, self.big_m, lam_best)
 

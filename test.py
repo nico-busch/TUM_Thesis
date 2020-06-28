@@ -4,7 +4,7 @@ import torch
 from torch.utils.data import Subset
 from sklearn.preprocessing import StandardScaler
 
-import predictive
+import prednet
 
 np.random.seed(42)
 torch.manual_seed(42)
@@ -31,13 +31,13 @@ scaler = StandardScaler()
 scaler.fit(features[:-test_size])
 features_std = scaler.transform(features)
 
-model = predictive.model.PredictiveNet(features.shape[1], params['n_steps'], params['n_hidden'], params['n_layers'],
-                                       params['dropout'])
-dataset = predictive.dataset.Dataset(features_std, params['n_steps'])
+model = prednet.model.PredictiveNet(features.shape[1], params['n_steps'], params['n_hidden'], params['n_layers'],
+                                    params['dropout'])
+dataset = prednet.dataset.Dataset(features_std, params['n_steps'])
 idx = list(range(len(dataset)))
 train_set = Subset(dataset, idx[:-test_size])
 val_set = Subset(dataset, idx[-test_size:])
-trainer = predictive.train.Trainer(model, train_set, val_set, params)
+trainer = prednet.train.Trainer(model, train_set, val_set, params)
 trainer.train()
 
 

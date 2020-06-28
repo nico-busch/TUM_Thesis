@@ -9,7 +9,9 @@
       <w>multiperiod</w>
       <w>parnn</w>
       <w>pred</w>
+      <w>prednet</w>
       <w>preds</w>
+      <w>presnet</w>
       <w>probs</w>
     </words>
   </dictionary>

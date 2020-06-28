@@ -3,7 +3,7 @@ import pandas as pd
 import torch
 from sklearn.preprocessing import StandardScaler
 
-import prescriptive
+import presnet
 import dda
 import test_utils
 import viz
@@ -69,15 +69,15 @@ def test_prescriptive(prices, features, demand, test_size):
         scaler.fit(features[:idx + 1])
         features_std = scaler.transform(features)
 
-        model = prescriptive.model.PrescriptiveNet(prices.shape[1], features.shape[1], params['n_steps'],
-                                                   params['n_hidden'], params['n_layers'], params['dropout'])
-        train_set = prescriptive.dataset.PresDataset(prices[:idx + 1], features_std[:idx + 1], demand[:idx + 1],
-                                                     params['n_steps'])
-        val_set = prescriptive.dataset.PresDataset(prices[idx - params['n_steps'] + 1:idx + 16],
+        model = presnet.model.PresNet(prices.shape[1], features.shape[1], params['n_steps'],
+                                      params['n_hidden'], params['n_layers'], params['dropout'])
+        train_set = presnet.dataset.PresDataset(prices[:idx + 1], features_std[:idx + 1], demand[:idx + 1],
+                                                params['n_steps'])
+        val_set = presnet.dataset.PresDataset(prices[idx - params['n_steps'] + 1:idx + 16],
                                                features_std[idx - params['n_steps'] + 1:idx + 16],
                                                demand[idx - params['n_steps'] + 1:idx + 16],
-                                                   params['n_steps'])
-        trainer = prescriptive.train.PresTrainer(model, train_set, val_set, params)
+                                              params['n_steps'])
+        trainer = presnet.train.PresTrainer(model, train_set, val_set, params)
         trainer.train()
 
         model.eval()

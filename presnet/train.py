@@ -1,7 +1,8 @@
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
+import matplotlib.pyplot as plt
 
-from prescriptive.loss import weighted_bce_loss
+from presnet.loss import weighted_bce_loss
 
 
 class PresTrainer:
@@ -17,6 +18,7 @@ class PresTrainer:
     def train(self):
 
         train_loader = DataLoader(self.train_set, batch_size=self.params['batch_size'], shuffle=False)
+
         for e in range(self.params['n_epochs']):
             self.train_epoch(train_loader)
 

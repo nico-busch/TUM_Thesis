@@ -1,3 +1,4 @@
+import timeit
 import numpy as np
 import gurobipy as gp
 from gurobipy import GRB
@@ -23,15 +24,17 @@ class DDA:
 
     def train(self):
 
+        start = timeit.default_timer()
+
         if self.reg in ['lasso', 'ridge']:
 
             cv = KFold(n_splits=2)
             lam = 0
             lam_best = None
             c_best = np.inf
-            beta = np.full([self.features.shape[1] + 1, self.prices.shape[1]], np.inf)
+            all_zero = False
 
-            while np.sum(beta[1:, 1:]) >= 10e-3:
+            while not all_zero and timeit.default_timer() - start <= 30:
 
                 # Cross-validate
                 c_split = np.empty(cv.get_n_splits())
@@ -39,13 +42,16 @@ class DDA:
 
                     _, beta = self.optimize(self.prices[train], self.features_std[train], self.demand[train],
                                             self.big_m, lam)
+                    if np.sum(beta[1:, 1:]) <= 10e-3:
+                        all_zero = True
                     c_split[i] = self.prescribe(self.prices[val], self.features_std[val], self.demand[val], beta).mean()
                 c = np.mean(c_split)
 
                 if c < c_best:
                     c_best = c
                     lam_best = lam
-                    lam += 0.01
+
+                lam += 0.01
 
             obj, self.beta = self.optimize(self.prices, self.features_std, self.demand, self.big_m, lam_best)
 

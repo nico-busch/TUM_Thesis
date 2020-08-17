@@ -1,8 +1,8 @@
-import numpy as np
 import pandas as pd
 import matplotlib
 import matplotlib.pyplot as plt
 from pandas.plotting import register_matplotlib_converters
+
 register_matplotlib_converters()
 
 matplotlib.use("pgf")
@@ -19,20 +19,22 @@ spot.index.freq = 'M'
 plt.figure(figsize=(6, 6 / 16 * 9))
 ax = plt.gca()
 
-ax.plot(spot, marker='o', color=(0, 101/255, 189/255), linewidth=1, markersize=5)
-input_window = plt.Rectangle((pd.Timestamp('2013-07-01', freq='M'),
-                              spot.loc[pd.Timestamp('2012-12-15'):pd.Timestamp('2016-01-15')].min() - 5),
-                              pd.Timedelta(11, unit='M'),
-                              spot.loc[pd.Timestamp('2012-12-15'):pd.Timestamp('2016-01-15')].max()
-                              - spot.loc[pd.Timestamp('2012-12-15'):pd.Timestamp('2016-01-15')].min() + 5,
-                              color=(156 / 255, 157 / 255, 159 / 255), fill=False)
+ax.plot(spot, marker='o', color=(0, 101 / 255, 189 / 255), linewidth=1, markersize=5)
+# noinspection PyTypeChecker
+input_window = plt.Rectangle([pd.Timestamp('2013-07-01', freq='M'),
+                              spot.loc[pd.Timestamp('2012-12-15'):pd.Timestamp('2016-01-15')].min() - 5],
+                             pd.Timedelta(11, unit='M'),
+                             spot.loc[pd.Timestamp('2012-12-15'):pd.Timestamp('2016-01-15')].max()
+                             - spot.loc[pd.Timestamp('2012-12-15'):pd.Timestamp('2016-01-15')].min() + 5,
+                             color=(156 / 255, 157 / 255, 159 / 255), fill=False)
 ax.add_patch(input_window)
+# noinspection PyTypeChecker
 output_window = plt.Rectangle((pd.Timestamp('2014-07-01', freq='M'),
-                              spot.loc[pd.Timestamp('2012-12-15'):pd.Timestamp('2016-01-15')].min() - 5),
+                               spot.loc[pd.Timestamp('2012-12-15'):pd.Timestamp('2016-01-15')].min() - 5),
                               pd.Timedelta(5, unit='M'),
                               spot.loc[pd.Timestamp('2012-12-15'):pd.Timestamp('2016-01-15')].max()
                               - spot.loc[pd.Timestamp('2012-12-15'):pd.Timestamp('2016-01-15')].min() + 5,
-                              color=(156/255, 157/255, 159/255), fill=False)
+                              color=(156 / 255, 157 / 255, 159 / 255), fill=False)
 ax.add_patch(output_window)
 ax.text(pd.Timestamp('2014-01-01', freq='M'),
         spot.loc[pd.Timestamp('2012-12-15'):pd.Timestamp('2016-01-15')].to_numpy().min() - 3.5,

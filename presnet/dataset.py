@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 from torch.utils.data import Dataset
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import PowerTransformer
 
 
 class PresDataset(Dataset):
@@ -13,7 +13,7 @@ class PresDataset(Dataset):
         self.demand = demand
         self.n_steps = n_steps
 
-        self.scaler = StandardScaler()
+        self.scaler = PowerTransformer(method='yeo-johnson')
         self.features_std = self.scaler.fit_transform(features)
 
     def __len__(self):

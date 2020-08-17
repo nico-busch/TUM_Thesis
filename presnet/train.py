@@ -18,7 +18,6 @@ class PresTrainer:
     def train(self):
 
         train_loader = DataLoader(self.train_set, batch_size=self.params['batch_size'], shuffle=False)
-
         for e in range(self.params['n_epochs']):
             self.train_epoch(train_loader)
 

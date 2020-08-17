@@ -67,11 +67,11 @@ for t in range(test_size):
     features_std = scaler.fit_transform(features)
     spot = features_std[:, 0]
 
-    model = prednet.model.PredictiveNet(features.shape[1], n_fc,
-                                        params['n_steps'], params['n_hidden'],
-                                        params['n_layers'], params['dropout'])
-    train_set = prednet.dataset.Dataset(spot, features_std, n_fc, params['n_steps'])
-    trainer = prednet.train.Trainer(model, train_set, train_set, params)
+    model = prednet.model.PredNet(features.shape[1], n_fc,
+                                  params['n_steps'], params['n_hidden'],
+                                  params['n_layers'], params['dropout'])
+    train_set = prednet.dataset.PredDataset(spot, features_std, n_fc, params['n_steps'])
+    trainer = prednet.train.PredTrainer(model, train_set, train_set, params)
     trainer.train()
     model.eval()
     with torch.no_grad():

@@ -31,13 +31,13 @@ scaler = StandardScaler()
 scaler.fit(features[:-test_size])
 features_std = scaler.transform(features)
 
-model = prednet.model.PredictiveNet(features.shape[1], params['n_steps'], params['n_hidden'], params['n_layers'],
-                                    params['dropout'])
-dataset = prednet.dataset.Dataset(features_std, params['n_steps'])
+model = prednet.model.PredNet(features.shape[1], params['n_steps'], params['n_hidden'], params['n_layers'],
+                              params['dropout'])
+dataset = prednet.dataset.PredDataset(features_std, params['n_steps'])
 idx = list(range(len(dataset)))
 train_set = Subset(dataset, idx[:-test_size])
 val_set = Subset(dataset, idx[-test_size:])
-trainer = prednet.train.Trainer(model, train_set, val_set, params)
+trainer = prednet.train.PredTrainer(model, train_set, val_set, params)
 trainer.train()
 
 

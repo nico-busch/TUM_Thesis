@@ -1,25 +1,97 @@
 import numpy as np
+import pandas as pd
 from sklearn.metrics import roc_curve
+import shap
+import matplotlib
 import matplotlib.pyplot as plt
+from pandas.plotting import register_matplotlib_converters
+register_matplotlib_converters()
+
+tum1 = (0, 101 / 255, 189 / 255)
+tum2 = (227/255, 114/255, 34/255)
+
+# matplotlib.use("pgf")
+# matplotlib.rcParams.update({
+#     'pgf.texsystem': 'pdflatex',
+#     'font.family': 'serif',
+#     'text.usetex': True,
+#     'pgf.rcfonts': False,
+# })
 
 
-def forward_curve(prices):
-    plt.plot(prices[:, 0], color='tab:blue', linewidth=3)
+def forward_curve(prices, dates=None):
+
+    # Plot the forward curve including spot and futures prices
+    plt.figure(figsize=(14 / 2.54, 3))
+    ax = plt.gca()
+    if dates is None:
+        plt.plot(prices[:, 0], color=tum1, linewidth=3, label='Spot')
+    else:
+        plt.plot(dates, prices[:, 0], color=tum1, linewidth=3, label='SPOT')
     for t in range(prices.shape[0]):
-        plt.plot(range(t, t + prices.shape[1]), prices[t], marker='o', color='tab:orange', ls='--', markersize=10)
-    plt.savefig('example.pgf')
-    plt.show()
+        if dates is None:
+            plt.plot(range(t, min(t + prices.shape[1], prices.shape[0])),
+                     prices[t, :min(prices.shape[1], prices.shape[0] - t)],
+                     marker='o', color=tum2, ls='-', markersize=3, label='Forward curve' if t == 0 else '')
+        else:
+            plt.plot([dates.min() + pd.DateOffset(months=x) for x in range(t, min(t + prices.shape[1], prices.shape[0]))],
+                     prices[t, :min(prices.shape[1], prices.shape[0] - t)],
+                     marker='o', color=tum2, ls='-', markersize=3, label='M1, M2, M3, M4' if t == 0 else '')
 
-def decision_curve(prices, decisions):
-    plt.plot(prices[:, 0], color='tab:blue', linewidth=3)
+    ax.yaxis.grid()
+
+    # Support for dates
+    if dates is not None:
+        ax.autoscale(axis='x', tight=True)
+        plt.ylabel('€/MWh')
+        plt.xticks(rotation=45, ha="right")
+        plt.subplots_adjust(bottom=0.2)
+
+    plt.legend()
+    plt.savefig('misc/forward_curve.pgf')
+    # plt.show()
+
+
+def decision_curve(prices, decisions, dates=None):
+
+    # Plot the forward curve including spot and futures prices
+    plt.figure(figsize=(14 / 2.54, 3))
+    ax = plt.gca()
+
+    plt.plot(dates, prices[:, 0], color=tum1, linewidth=3, label='Spot')
     for t in range(prices.shape[0]):
-        plt.plot(range(t, min(t + prices.shape[1], prices.shape[0])),
-                 prices[t, :min(prices.shape[1], prices.shape[0] - t)],
-                 marker='o', color='tab:orange', ls='--', markersize=10)
+        if dates is None:
+            plt.plot(range(t, min(t + prices.shape[1], prices.shape[0])),
+                     prices[t, :min(prices.shape[1], prices.shape[0] - t)],
+                     marker='o', color=tum2, ls='-', markersize=3, label='Forward curve' if t == 0 else '')
+        else:
+            plt.plot([dates.min() + pd.DateOffset(months=x) for x in range(t, min(t + prices.shape[1], prices.shape[0]))],
+                     prices[t, :min(prices.shape[1], prices.shape[0] - t)],
+                     marker='o', color=tum2, ls='-', markersize=3, label='Forward curve' if t == 0 else '')
+
+        # Plot decisions
         for tau in range(prices.shape[1]):
             if decisions[t, tau]:
-                plt.plot(t + tau, prices[t, tau], marker='o', fillstyle='none', color='tab:blue', markersize=20)
+                if dates is None:
+                    plt.plot(t + tau, prices[t, tau], marker='o', fillstyle='none', color=tum1, markersize=20,
+                             label='Decision' if t == 0 and tau == 0 else '', linestyle='None')
+                else:
+                    plt.plot(dates.min() + pd.DateOffset(months=t + tau), prices[t, tau], marker='o', fillstyle='none',
+                             color=tum1, markersize=10, label='Decision' if t == 0 and tau == 0 else '', linestyle='None')
+
+    ax.yaxis.grid()
+
+    # Support for dates
+    if dates is not None:
+        ax.autoscale(axis='x', tight=True)
+        plt.ylabel('€/MWh')
+        plt.xticks(rotation=45, ha="right")
+        plt.subplots_adjust(bottom=0.2)
+
+    plt.legend()
+    # plt.savefig('misc/forward_curve.pgf')
     plt.show()
+
 
 def roc(prices, scores):
     targets = []
@@ -46,3 +118,40 @@ def roc(prices, scores):
     plt.legend()
     plt.show()
 
+
+def feature_importance(model, sequences, cols):
+
+    explainer = shap.DeepExplainer(model, sequences)
+    shap_values = explainer.shap_values(sequences)
+    shap.summary_plot(shap_values[0].reshape(-1, sequences.shape[2]),
+                    features=sequences.contiguous().view(-1, sequences.shape[2]).numpy(),
+                    max_display=100, feature_names=cols)
+
+
+def hedge(df, decisions):
+
+    plt.figure(figsize=(14 / 2.54, 3))
+    ax = plt.gca()
+
+    plt.fill_between(df.index, df['Demand'], step='mid', color=tum1, label='Unhedged')
+
+    hedged = np.zeros(decisions.shape[0])
+    for t in range(decisions.shape[0]):
+        for tau in range(1, decisions.shape[1]):
+            if decisions[t, tau] == 1:
+                hedged[t + tau] = 1
+
+    hedged = pd.DataFrame(data={'Signal': hedged, 'Month': df['Month'].unique()})
+    df = pd.merge(df, hedged, on='Month').set_index(df.index)
+    df['Signal'] = df['Signal'].astype('int64')
+
+    plt.fill_between(df.index, df['Level'] * df['Signal'], step='mid', color=tum2, label='Hedged')
+
+    ax.autoscale(axis='x', tight=True)
+    plt.ylim(bottom=0)
+    plt.ylabel('MW')
+    plt.xticks(rotation=45, ha="right")
+    plt.subplots_adjust(bottom=0.2)
+    plt.legend()
+
+    plt.show()

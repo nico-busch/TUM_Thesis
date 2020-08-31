@@ -32,13 +32,19 @@ class PredNet(torch.nn.Module):
 
     def forward(self, x):
 
+        # If MLP -> propagate output to next layer
         if self.cell_type == 'mlp':
             cell_out = self.cell(x)
             cell_out = cell_out.contiguous().view(cell_out.shape[0], -1)
+        # If RNN -> propagate hidden state to next layer
         else:
             cell_out, _ = self.cell(x)
             cell_out = cell_out[:, -1]
+
+        # Apply dropout to last (recurrent) layer
         dropout_out = self.dropout(cell_out)
+
+        # Linear adaptor layer
         linear_out = self.linear(dropout_out)
 
         return linear_out

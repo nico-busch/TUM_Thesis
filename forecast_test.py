@@ -22,7 +22,7 @@ params = {
 np.random.seed(42)
 torch.manual_seed(42)
 
-df = pd.read_csv('data/data.csv', parse_dates=['DATE'], index_col='DATE', dayfirst=True)
+df = pd.read_csv('data/reuters.csv', parse_dates=['DATE'], index_col='DATE', dayfirst=True)
 df.index.freq = 'M'
 df = df.bfill()
 

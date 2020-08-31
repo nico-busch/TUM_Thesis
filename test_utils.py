@@ -2,6 +2,7 @@ import numpy as np
 import gurobipy as gp
 from gurobipy import GRB
 
+
 def c_pf(prices, demand):
 
     T = prices.shape[0]
@@ -22,7 +23,35 @@ def c_pf(prices, demand):
 
     m.optimize()
 
-    return m.objVal
+    decisions = np.array([1 if val.x >= 1e-3 else 0 for val in q.values()]).reshape([T, F + 1])
+
+    return m.objVal, decisions
+
+
+def c_ub(prices, demand):
+
+    T = prices.shape[0]
+    F = prices.shape[1] - 1
+
+    p = {(t, tau): prices[t - 1, tau] for t in range(1, T + 1) for tau in range(F + 1)}
+    d = {t: demand[t - 1] for t in range(1, T + 1)}
+
+    m = gp.Model()
+    m.Params.outputFlag = 0
+    q = m.addVars(range(1, T + 1), range(F + 1))
+
+    m.setObjective(gp.quicksum(p[t, tau] * q[t, tau]
+                               for t in range(1, T + 1) for tau in range(F + 1) if tau <= T - t) / T, GRB.MAXIMIZE)
+
+    m.addConstrs(gp.quicksum(q[t - tau, tau] for tau in range(F + 1) if tau <= t - 1) == d[t]
+                 for t in range(1, T + 1))
+
+    m.optimize()
+
+    decisions = np.array([1 if val.x >= 1e-3 else 0 for val in q.values()]).reshape([T, F + 1])
+
+    return m.objVal, decisions
+
 
 def c_tau(prices, demand, tau):
 
@@ -35,6 +64,7 @@ def c_tau(prices, demand, tau):
         costs[:tau] += prices[:tau, 0] * demand[:tau]
 
     return costs.mean()
+
 
 def c_prescribe(prices, demand, signals):
 

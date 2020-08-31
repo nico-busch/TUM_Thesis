@@ -34,7 +34,7 @@ class DDA:
             c_best = np.inf
             all_zero = False
 
-            while not all_zero and timeit.default_timer() - start <= 30:
+            while not all_zero and timeit.default_timer() - start <= 300:
 
                 # Cross-validate
                 c_split = np.empty(cv.get_n_splits())
@@ -42,6 +42,7 @@ class DDA:
 
                     _, beta = self.optimize(self.prices[train], self.features_std[train], self.demand[train],
                                             self.big_m, lam)
+                    print(beta)
                     if np.sum(beta[1:, 1:]) <= 10e-3:
                         all_zero = True
                     c_split[i] = self.prescribe(self.prices[val], self.features_std[val], self.demand[val], beta).mean()
@@ -79,7 +80,7 @@ class DDA:
         # Build model
         m = gp.Model()
         m.Params.outputFlag = 0
-        m.Params.timeLimit = 30
+        m.Params.timeLimit = 60
 
         # Add decision variables
         q = m.addVars(range(1, T + 1), range(F + 1), vtype=GRB.BINARY)

@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import matplotlib
 import matplotlib.pyplot as plt
@@ -13,40 +14,33 @@ matplotlib.rcParams.update({
     'pgf.rcfonts': False,
 })
 
-spot = pd.read_csv('data/data.csv', parse_dates=['DATE'], index_col='DATE', usecols=['DATE', 'SPOT'], dayfirst=True)
-spot.index.freq = 'M'
+np.random.seed(42000)
 
-plt.figure(figsize=(6, 6 / 16 * 9))
+spot = np.empty(36)
+positive = False
+while not positive:
+    spot[0] = 200
+    for t in range(36 - 1):
+        spot[t + 1] = spot[t] + np.random.normal(0, 10)
+    if np.all(spot >= 0):
+        positive = True
+
+plt.figure(figsize=(14 / 2.54, 3))
 ax = plt.gca()
 
 ax.plot(spot, marker='o', color=(0, 101 / 255, 189 / 255), linewidth=1, markersize=5)
-# noinspection PyTypeChecker
-input_window = plt.Rectangle([pd.Timestamp('2013-07-01', freq='M'),
-                              spot.loc[pd.Timestamp('2012-12-15'):pd.Timestamp('2016-01-15')].min() - 5],
-                             pd.Timedelta(11, unit='M'),
-                             spot.loc[pd.Timestamp('2012-12-15'):pd.Timestamp('2016-01-15')].max()
-                             - spot.loc[pd.Timestamp('2012-12-15'):pd.Timestamp('2016-01-15')].min() + 5,
-                             color=(156 / 255, 157 / 255, 159 / 255), fill=False)
+input_window = plt.Rectangle((6, spot.min() + 2), 12, spot.max() - spot.min() + 2,
+                             color='lightgrey')
 ax.add_patch(input_window)
-# noinspection PyTypeChecker
-output_window = plt.Rectangle((pd.Timestamp('2014-07-01', freq='M'),
-                               spot.loc[pd.Timestamp('2012-12-15'):pd.Timestamp('2016-01-15')].min() - 5),
-                              pd.Timedelta(5, unit='M'),
-                              spot.loc[pd.Timestamp('2012-12-15'):pd.Timestamp('2016-01-15')].max()
-                              - spot.loc[pd.Timestamp('2012-12-15'):pd.Timestamp('2016-01-15')].min() + 5,
-                              color=(156 / 255, 157 / 255, 159 / 255), fill=False)
+output_window = plt.Rectangle((19, spot.min() + 2), 6, spot.max() - spot.min() + 2,
+                             color='lightgrey')
 ax.add_patch(output_window)
-ax.text(pd.Timestamp('2014-01-01', freq='M'),
-        spot.loc[pd.Timestamp('2012-12-15'):pd.Timestamp('2016-01-15')].to_numpy().min() - 3.5,
-        'Input window', horizontalalignment='center')
-ax.text(pd.Timestamp('2014-9-16', freq='M'),
-        spot.loc[pd.Timestamp('2012-12-15'):pd.Timestamp('2016-01-15')].to_numpy().min() - 3.5,
-        'Output' + '\n' + 'window', horizontalalignment='center')
-ax.set_xlim(pd.Timestamp('2012-12-15'), pd.Timestamp('2016-01-15'))
-ax.set_ylim(spot.loc[pd.Timestamp('2012-12-15'):pd.Timestamp('2016-01-15')].to_numpy().min() - 7.5,
-            spot.loc[pd.Timestamp('2012-12-15'):pd.Timestamp('2016-01-15')].to_numpy().max() + 2.5)
-plt.ylabel('EUR/MWh')
-plt.xticks(rotation=45, ha="right")
-plt.subplots_adjust(bottom=0.15)
 
+plt.ylim(spot.min() - 2, spot.max() + 8)
+ax.text(12, spot.min() + 5, 'Input window', horizontalalignment='center')
+ax.text(22, spot.min() + 5, 'Output' + '\n' + 'window', horizontalalignment='center')
+
+ax.autoscale(axis='x', tight=True)
+
+# plt.show()
 plt.savefig('misc/windows.pgf')

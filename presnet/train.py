@@ -2,16 +2,18 @@ import torch
 from torch.utils.data import DataLoader, Subset
 import matplotlib.pyplot as plt
 
-from presnet.loss import weighted_bce_loss
+from presnet.loss import weighted_bce_loss, l1_regularizer
 
 
 class PresTrainer:
 
-    def __init__(self, model, train_set, params):
+    def __init__(self, model, train_set, params, val_set=None, weighted=True):
 
         self.model = model
         self.train_set = train_set
+        self.val_set = val_set
         self.params = params
+        self.weighted = weighted
 
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=params['lr'], weight_decay=params['weight_decay'])
 
@@ -20,6 +22,10 @@ class PresTrainer:
         train_loader = DataLoader(self.train_set, batch_size=self.params['batch_size'], shuffle=False)
         for e in range(self.params['n_epochs']):
             self.train_epoch(train_loader)
+
+        if self.val_set is not None:
+            val_loader = DataLoader(self.val_set, batch_size=self.params['batch_size'], shuffle=False)
+            return self.val(val_loader)
 
     def train_epoch(self, train_loader):
 
@@ -30,7 +36,9 @@ class PresTrainer:
         for sequences, targets, weights in train_loader:
 
             logits = self.model(sequences)
+            weights = weights if self.weighted else 1
             loss = weighted_bce_loss(logits, targets, weights)
+            # loss += l1_regularizer(self.model)
             train_loss += loss
             n_batches += 1
             loss.backward()
@@ -44,17 +52,18 @@ class PresTrainer:
 
         self.model.eval()
         val_loss = 0
-        n_batches = 0
+        n_samples = 0
 
         with torch.no_grad():
             for sequences, targets, weights in val_loader:
 
                 logits = self.model(sequences)
-                loss = weighted_bce_loss(logits, targets, weights)
+                preds = logits.sigmoid() >= 0.5
+                loss = preds.eq(targets >= 0.5).sum().item()
                 val_loss += loss
-                n_batches += 1
+                n_samples += targets.numel()
 
-        return val_loss / n_batches
+        return val_loss / n_samples
 
 
 

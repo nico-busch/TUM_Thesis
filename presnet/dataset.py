@@ -6,7 +6,7 @@ from sklearn.preprocessing import PowerTransformer
 
 class PresDataset(Dataset):
 
-    def __init__(self, prices, features, demand, n_steps):
+    def __init__(self, prices, features, demand, n_steps, scaler=None):
 
         self.prices = prices
         self.features = features
@@ -14,8 +14,16 @@ class PresDataset(Dataset):
         self.n_steps = n_steps
 
         # Transform inputs
-        self.scaler = PowerTransformer(method='yeo-johnson')
-        self.features_std = self.scaler.fit_transform(features)
+        if scaler is None:
+            # Apply box-cox instead of yeo-johnson for strictly positive data since it's numerically more stable
+            if (features < 0).any():
+                self.scaler = PowerTransformer(standardize=True, method='yeo-johnson')
+            else:
+                self.scaler = PowerTransformer(standardize=True, method='box-cox')
+            self.features_std = self.scaler.fit_transform(features)
+        else:
+            self.scaler = scaler
+            self.features_std = self.scaler.transform(features)
 
     def __len__(self):
         return self.prices.shape[0] - self.prices.shape[1] - self.n_steps + 2

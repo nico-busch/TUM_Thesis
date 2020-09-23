@@ -1,8 +1,7 @@
 import torch
-from torch.utils.data import DataLoader, Subset
-import matplotlib.pyplot as plt
+from torch.utils.data import DataLoader
 
-from presnet.loss import weighted_bce_loss, l1_regularizer
+from loss import weighted_bce_loss, l1_regularizer, accuracy, precision, recall
 
 
 class PresTrainer:
@@ -24,46 +23,41 @@ class PresTrainer:
             self.train_epoch(train_loader)
 
         if self.val_set is not None:
-            val_loader = DataLoader(self.val_set, batch_size=self.params['batch_size'], shuffle=False)
+            val_loader = DataLoader(self.val_set, batch_size=len(self.val_set), shuffle=False)
             return self.val(val_loader)
 
     def train_epoch(self, train_loader):
 
         self.model.train()
         train_loss = 0
-        n_batches = 0
+        n_samples = 0
 
         for sequences, targets, weights in train_loader:
 
             logits = self.model(sequences)
             weights = weights if self.weighted else 1
             loss = weighted_bce_loss(logits, targets, weights)
-            # loss += l1_regularizer(self.model)
-            train_loss += loss
-            n_batches += 1
+            # loss += l1_regularizer(self.model, 1e9)
+            train_loss += loss * targets.numel()
+            n_samples += targets.numel()
             loss.backward()
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.params['grad_clip'])
             self.optimizer.step()
             self.optimizer.zero_grad()
 
-        return train_loss / n_batches
+        return train_loss / n_samples
 
     def val(self, val_loader):
 
         self.model.eval()
-        val_loss = 0
-        n_samples = 0
-
         with torch.no_grad():
             for sequences, targets, weights in val_loader:
-
                 logits = self.model(sequences)
-                preds = logits.sigmoid() >= 0.5
-                loss = preds.eq(targets >= 0.5).sum().item()
-                val_loss += loss
-                n_samples += targets.numel()
 
-        return val_loss / n_samples
+        return {'wbce': weighted_bce_loss(logits, targets, weights).item(),
+                'accuracy': accuracy(logits, targets, weights).item(),
+                'precision': precision(logits, targets).numpy(),
+                'recall': recall(logits, targets).numpy()}
 
 
 

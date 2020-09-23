@@ -11,7 +11,7 @@ import presnet
 import prednet
 
 
-def generate_series(n_time=100, initial_spot=200, sigma=5, beta0=0, beta1=1, beta2=1, non_linear=False,
+def generate_series(n_time=100, initial_spot=200, sigma=10, beta0=0, beta1=1, beta2=1, non_linear=False,
                     n_add_feature=8, feature_sigma=15, seasonal_demand=True, mean_demand=1):
 
     # Spot prices
@@ -35,6 +35,7 @@ def generate_series(n_time=100, initial_spot=200, sigma=5, beta0=0, beta1=1, bet
     # Apply exp transformation to simulate logarithmic price-feature relationship
     if non_linear:
         price_feature = np.exp(price_feature)
+        print(price_feature)
 
     # Additional features
     add_features = np.hstack([np.random.normal(10 * i, 2 * i, [n_time, 1]) for i in range(3, 3 + n_add_feature)])
@@ -55,7 +56,7 @@ def generate_data():
     n_runs = 100
     processes = ['mr', 'rw']
     non_linear = [True, False]
-    sigmas = [10, 20]
+    sigmas = [10]
     n_time = 120
 
     # Drop data into dataframe for reproducibility
@@ -90,20 +91,23 @@ def simulation():
     # df = generate_data()
     # df.to_csv('data/simulation.csv')
 
+
     # Read generated data
     df = pd.read_csv('data/simulation.csv')
     df = df.set_index(['process', 'non_linear', 'sigma', 'run', 'time'])
 
-    train_sizes = [24, 72]
+    df = df.loc[pd.IndexSlice[:, True], :]
+
+    train_sizes = [25, 73]
     test_size = 48
 
     # Results dataframe
     results = pd.DataFrame(columns=[
         'process', 'non_linear', 'sigma', 'run', 'train_size',
-        # 'p_spot', 'p_m1',
-        # 'lasso', 'ridge',
-        # 'dda_ml1', 'dda_ml2',
-        # 'mlp_seo', 'rnn_seo', 'lstm_seo',
+        'p_spot', 'p_m1',
+        'lasso', 'ridge',
+        'dda_ml1', 'dda_ml2',
+        'mlp_seo', 'rnn_seo', 'lstm_seo',
         'mlp_ieo', 'rnn_ieo', 'lstm_ieo'
     ])
     results = results.set_index(['process', 'non_linear', 'sigma', 'run', 'train_size'])
@@ -115,27 +119,27 @@ def simulation():
         demand = run['demand'].to_numpy()
 
         # Perfect foresight costs
-        c_pf, _ = test_utils.c_pf(prices[-test_size:], demand[-test_size:])
+        c_pf = test_utils.c_pf(prices[-test_size:], demand[-test_size:])[0].mean()
 
         for train_size in train_sizes:
 
             size = train_size + test_size - 1
             costs = [
                 # Baseline
-                # test_utils.c_tau(prices[-test_size:], demand[-test_size:], 0),
-                # test_utils.c_tau(prices[-test_size:], demand[-test_size:], 1),
+                test_utils.c_tau(prices[-test_size:], demand[-test_size:], 0).mean(),
+                test_utils.c_tau(prices[-test_size:], demand[-test_size:], 1).mean(),
                 # Regression
-                # test_regression(prices[-size:], features[-size:], demand[-size:], test_size, 'lasso'),
-                # test_regression(prices[-size:], features[-size:], demand[-size:], test_size, 'ridge'),
-                # test_dda(prices[-size:], features[-size:], demand[-size:], test_size, 'lasso'),
-                # test_dda(prices[-size:], features[-size:], demand[-size:], test_size, 'ridge'),
+                test_regression(prices[-size:], features[-size:], demand[-size:], test_size, 'lasso').mean(),
+                test_regression(prices[-size:], features[-size:], demand[-size:], test_size, 'ridge').mean(),
+                test_dda(prices[-size:], features[-size:], demand[-size:], test_size, 'lasso').mean(),
+                test_dda(prices[-size:], features[-size:], demand[-size:], test_size, 'ridge').mean(),
                 # Neural networks
-                # test_prednet(prices[-size:], features[-size:], demand[-size:], test_size, 'mlp'),
-                # test_prednet(prices[-size:], features[-size:], demand[-size:], test_size, 'rnn'),
-                # test_prednet(prices[-size:], features[-size:], demand[-size:], test_size, 'lstm'),
-                test_presnet(prices[-size:], features[-size:], demand[-size:], test_size, 'mlp'),
-                test_presnet(prices[-size:], features[-size:], demand[-size:], test_size, 'rnn'),
-                test_presnet(prices[-size:], features[-size:], demand[-size:], test_size, 'lstm')
+                test_prednet(prices[-size:], features[-size:], demand[-size:], test_size, 'mlp').mean(),
+                test_prednet(prices[-size:], features[-size:], demand[-size:], test_size, 'rnn').mean(),
+                test_prednet(prices[-size:], features[-size:], demand[-size:], test_size, 'lstm').mean(),
+                test_presnet(prices[-size:], features[-size:], demand[-size:], test_size, 'mlp').mean(),
+                test_presnet(prices[-size:], features[-size:], demand[-size:], test_size, 'rnn').mean(),
+                test_presnet(prices[-size:], features[-size:], demand[-size:], test_size, 'lstm').mean()
                      ]
 
             costs = np.array(costs)
@@ -144,7 +148,9 @@ def simulation():
             # Print and save results
             results.loc[idx + (train_size,)] = pe
             print(results.groupby(['process', 'non_linear', 'sigma', 'train_size']).mean().to_string())
-            results.to_pickle('results/numerical_study_bce.pkl')
+
+            # results.to_pickle('results/numerical_study.pkl')
+            # results.to_csv('results/numerical_study.csv')
 
 
 def test_presnet(prices, features, demand, test_size, cell_type):
@@ -165,25 +171,29 @@ def test_presnet(prices, features, demand, test_size, cell_type):
     # Build and train model
     model = presnet.model.PresNet(cell_type, prices.shape[1], features.shape[1], params['n_steps'],
                                   params['n_hidden'], params['n_layers'], params['dropout'])
+
+    # Number of parameters in network
+    # print(cell_type, sum(p.numel() for p in model.parameters()))
+
     train_set = presnet.dataset.PresDataset(prices[:-test_size + 1], features[:-test_size + 1],
                                             demand[:-test_size + 1], params['n_steps'])
-    trainer = presnet.train.PresTrainer(model, train_set, params, weighted=False)
+    trainer = presnet.train.PresTrainer(model, train_set, params, weighted=True)
     trainer.train()
 
     # Test model
     signals = np.zeros([test_size, prices.shape[1]], dtype=np.bool_)
-    for t in range(test_size):
-        idx = prices.shape[0] - test_size + t
+    with torch.no_grad():
+        sequences = []
+        for x in range(prices.shape[0] - test_size, prices.shape[0]):
+            sequences.append(train_set.scaler.transform(features)[x - params['n_steps'] + 1:x + 1])
         model.eval()
-        with torch.no_grad():
-            sequence = train_set.scaler.transform(features)[None, idx - params['n_steps'] + 1:idx + 1]
-            logits = model(torch.tensor(sequence).float())
-            signals[t, 1:] = logits.sigmoid().numpy().squeeze(axis=0) >= 0.5
+        logits = model(torch.tensor(sequences).float())
+        signals[:] += logits.sigmoid().numpy() >= 0.5
 
     # Prescribe decisions
     costs, _ = test_utils.c_prescribe(prices[-test_size:], demand[-test_size:], signals)
 
-    return costs.mean()
+    return costs
 
 
 def test_prednet(prices, features, demand, test_size, cell_type):
@@ -223,7 +233,7 @@ def test_prednet(prices, features, demand, test_size, cell_type):
     # Prescribe decisions
     costs, _ = test_utils.c_prescribe(prices[-test_size:], demand[-test_size:], signals)
 
-    return costs.mean()
+    return costs
 
 
 def test_dda(prices, features, demand, test_size, reg):
@@ -236,7 +246,7 @@ def test_dda(prices, features, demand, test_size, reg):
     # Prescribe decisions
     costs = model.prescribe(prices[-test_size:], model.scaler.transform(features[-test_size:]), demand[-test_size:])
 
-    return costs.mean()
+    return costs
 
 
 def test_regression(prices, features, demand, test_size, reg):
@@ -244,7 +254,7 @@ def test_regression(prices, features, demand, test_size, reg):
     # Build and train model
     scaler = StandardScaler()
     features_std = scaler.fit_transform(features)
-    params = {'alpha': np.arange(0.001, 10.1, 0.1)}
+    params = {'alpha': np.arange(0.01, 10.01, 0.01)}
     if reg == 'lasso':
         model = Lasso(max_iter=1e6)
     elif reg == 'ridge':
@@ -260,7 +270,7 @@ def test_regression(prices, features, demand, test_size, reg):
     signals[:, 1] = pred >= prices[-test_size:, 1]
     costs, _ = test_utils.c_prescribe(prices[-test_size:], demand[-test_size:], signals)
 
-    return costs.mean()
+    return costs
 
 
 if __name__ == '__main__':
